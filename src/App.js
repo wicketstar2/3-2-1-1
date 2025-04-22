@@ -82,7 +82,6 @@ class App extends Component {
     super();
     this.state = {
       monsters: [],
-      usedMonsters: [], // NEW
       selected: { d1: '', d2: '', d3: '' },
       showText: true,
       showText1: false,
@@ -99,14 +98,6 @@ class App extends Component {
 
   componentDidMount() {
     this.setState({ monsters: monstersData });
-
-    // 🔥 Load used names from Firebase
-    const usedRef = ref(db, 'usedMonsters');
-    onValue(usedRef, (snapshot) => {
-      const data = snapshot.val();
-      const used = data ? Object.values(data) : [];
-      this.setState({ usedMonsters: used });
-    });
   }
 
   handleToggle = () => {
@@ -116,13 +107,6 @@ class App extends Component {
   handleToggle1 = () => {
     const { selected } = this.state;
     push(ref(db, 'submissions'), selected).then(() => {
-      // 🔥 Save used names
-      Object.values(selected).forEach((name) => {
-        if (name) {
-          push(ref(db, 'usedMonsters'), name);
-        }
-      });
-
       this.setState({
         showText: false,
         showText1: false,
@@ -139,7 +123,7 @@ class App extends Component {
   };
 
   handleToggle3 = () => {
-    this.setState({ showText: true, showText1: true, buttont1: false, for: true, d1: false });
+    this.setState({ showText: true, showText1: true, buttont1: false, for: true,  d1:false});
   };
 
   handleSelectChange = (dropdownId, value) => {
@@ -163,11 +147,7 @@ class App extends Component {
         >
           <option value=''>Select</option>
           {this.state.monsters
-            .filter(
-              (monster) =>
-                !selectedValues.includes(monster.Niall) &&
-                !this.state.usedMonsters.includes(monster.Niall) // 👈 filter out used names
-            )
+            .filter((monster) => !selectedValues.includes(monster.Niall))
             .map((monster, index) => (
               <option key={index} value={monster.Niall}>
                 {monster.Niall}
@@ -220,7 +200,6 @@ class App extends Component {
         {this.state.button3 &&
           <button onClick={this.handleToggle3}>Back</button>
         }
-
         {this.state.loggedIn && (
           <>
             <h2>Admin Table</h2>
