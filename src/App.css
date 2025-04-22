@@ -1,10 +1,19 @@
 .App {
   text-align:center;
+  
+}
+
+.bbb{
+  font-size: 10px;
+  border-radius: 5px;
+  margin: 5px;
+  color: white;
+  padding: 5px 10px;
+  background-color: rgb(0, 123, 255); 
 }
 
 .d1{
   position: relative;
-  left: 40rem;
   margin-top: 5px;
   margin-right: 10px;
   margin-left: 10px;
@@ -13,7 +22,6 @@
 .d3{
   margin-top: 5px;
   position: relative;
-  left: 40rem;
   margin-right: 10px;
   margin-left: 10px;
 }
@@ -21,9 +29,18 @@
 .d2{
   margin-top: 5px;
   position: relative;
-  left: 40rem;
   margin-right: 10px;
   margin-left: 10px;
+}
+
+
+.bb{
+  font-size: 10px;
+  border-radius: 5px;
+  margin: 5px;
+  color: white;
+  padding: 5px 10px;
+  background-color: rgb(0, 123, 255);
 }
 
 
@@ -33,7 +50,7 @@
   margin: 5px;
   color: white;
   padding: 5px 10px;
-  background-color: rgb(28, 25, 25);
+  background-color: rgb(0, 85, 255);
 }
 
 .b2 {
@@ -47,7 +64,7 @@
   margin: 5px;
   color: white;
   padding: 5px 10px;
-  background-color: rgb(28, 25, 25);
+  background-color: rgb(0, 0, 0);
 }
 
 .App-logo {
@@ -84,3 +101,5 @@
     transform: rotate(360deg);
   }
 }
+
+

@@ -123,7 +123,7 @@ class App extends Component {
   };
 
   handleToggle3 = () => {
-    this.setState({ showText: true, showText1: true, buttont1: false, for: true,  d1:false});
+    this.setState({ showText: true, showText1: true, buttont1: false, for: true, d1: false });
   };
 
   handleSelectChange = (dropdownId, value) => {
@@ -162,7 +162,7 @@ class App extends Component {
     return (
       <div className='App'>
         {!this.state.loggedIn && (
-          <button onClick={() => this.setState({ showLogin: !this.state.showLogin })}>
+          <button id='bbb' className='bbb' onClick={() => this.setState({ showLogin: !this.state.showLogin })}>
             {this.state.showLogin ? 'Hide Login' : 'Show Admin Login'}
           </button>
         )}
@@ -180,7 +180,7 @@ class App extends Component {
         )}
 
         {!this.state.loggedIn && this.state.showText && (
-          <div style={{ display: 'flex' }}>
+          <div >
             {this.state.monsters.map((monster, index) => (
               <div key={index}>
                 <button onClick={this.handleToggle} className='b1'>
@@ -193,13 +193,14 @@ class App extends Component {
 
         {!this.state.loggedIn && this.state.buttont1 && (
           <div style={{ display: 'flex' }}>
-            <button className='b1' onClick={this.handleToggle1}>Save</button>
+            <button className='b3' onClick={this.handleToggle1}>Save</button>
           </div>
         )}
 
-        {this.state.button3 &&
-          <button onClick={this.handleToggle3}>Back</button>
-        }
+        {this.state.button3 && (
+          <button id='bb' className='bb' onClick={this.handleToggle3}>Back</button>
+        )}
+
         {this.state.loggedIn && (
           <>
             <h2>Admin Table</h2>
@@ -210,5 +211,6 @@ class App extends Component {
     );
   }
 }
+
 
 export default App;
