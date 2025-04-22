@@ -2,7 +2,7 @@ import React, { Component, useEffect, useState } from 'react';
 import './App.css';
 import monstersData from './Book1.json';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, push, onValue } from 'firebase/database';
+import { getDatabase, ref, push, onValue, remove, set } from 'firebase/database';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -10,7 +10,7 @@ const firebaseConfig = {
   authDomain: "project-3145442148108828130.firebaseapp.com",
   databaseURL: "https://project-3145442148108828130-default-rtdb.firebaseio.com",
   projectId: "project-3145442148108828130",
-  storageBucket: "project-3145442148108828130.firebasestorage.app",
+  storageBucket: "project-3145442148108828130.appspot.com",
   messagingSenderId: "240531983328",
   appId: "1:240531983328:web:65e0b89f4af86eb4ddf985",
   measurementId: "G-2YVNYQ4GF6"
@@ -46,6 +46,7 @@ function Login({ onLogin }) {
 
 function AdminPanel() {
   const [entries, setEntries] = useState([]);
+  const [submissionStatus, setSubmissionStatus] = useState('closed');
 
   useEffect(() => {
     const submissionsRef = ref(db, 'submissions');
@@ -53,29 +54,87 @@ function AdminPanel() {
       const data = snapshot.val();
       setEntries(data ? Object.values(data) : []);
     });
+
+    const statusRef = ref(db, 'submissionStatus');
+    onValue(statusRef, (snapshot) => {
+      const status = snapshot.val();
+      setSubmissionStatus(status || 'closed');
+    });
   }, []);
 
+  const handleClearData = () => {
+    remove(ref(db, 'submissions'))
+      .then(() => {
+        alert('All data cleared!');
+        setEntries([]);
+      })
+      .catch((error) => {
+        console.error('Error clearing data: ', error);
+        alert('Error clearing data');
+      });
+  };
+
+  const toggleSubmission = (status) => {
+    set(ref(db, 'submissionStatus'), status)
+      .then(() => alert(`Submissions ${status}`))
+      .catch((err) => alert('Error updating submission status: ' + err.message));
+  };
+
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>1 point</th>
-          <th>2 points</th>
-          <th>3 points</th>
-        </tr>
-      </thead>
-      <tbody>
-        {entries.map((entry, index) => (
-          <tr key={index}>
-            <td>{entry.d1}</td>
-            <td>{entry.d2}</td>
-            <td>{entry.d3}</td>
+    <div style={{ overflowX: 'auto' }}>
+      <h3>Admin Panel</h3>
+      <button onClick={() => toggleSubmission('open')} style={{ margin: '10px', backgroundColor: 'green', color: 'white' }}>
+        Open Submission
+      </button>
+      <button onClick={() => toggleSubmission('closed')} style={{ margin: '10px', backgroundColor: 'orange', color: 'white' }}>
+        Close Submission
+      </button>
+      <button onClick={handleClearData} style={{ margin: '20px 0', padding: '10px', backgroundColor: 'red', color: 'white' }}>
+        Clear All Data
+      </button>
+      <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '20px', fontFamily: 'Arial, sans-serif' }}>
+        <thead style={{ backgroundColor: '#f4f4f4' }}>
+          <tr>
+            <th style={thStyle}>Player</th>
+            <th style={thStyle}>3 Points</th>
+            <th style={thStyle}>2 Points</th>
+            <th style={thStyle}>1 Point</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {entries.map((entry, index) => (
+            <tr key={index} style={index % 2 === 0 ? rowStyleEven : rowStyleOdd}>
+              <td style={tdStyle}>{entry.d1}</td>
+              <td style={tdStyle}>{entry.d1}</td>
+              <td style={tdStyle}>{entry.d2}</td>
+              <td style={tdStyle}>{entry.d3}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
+
+const thStyle = {
+  padding: '12px',
+  border: '1px solid #ccc',
+  textAlign: 'left',
+  fontWeight: 'bold'
+};
+
+const tdStyle = {
+  padding: '10px',
+  border: '1px solid #ddd',
+};
+
+const rowStyleEven = {
+  backgroundColor: '#f9f9f9'
+};
+
+const rowStyleOdd = {
+  backgroundColor: '#ffffff'
+};
 
 class App extends Component {
   constructor() {
@@ -93,20 +152,40 @@ class App extends Component {
       buttont2: true,
       showLogin: false,
       loggedIn: false,
+      close: false,
+      open: false,
+      bb:false,
     };
   }
 
   componentDidMount() {
     this.setState({ monsters: monstersData });
+
+    const statusRef = ref(db, 'submissionStatus');
+    onValue(statusRef, (snapshot) => {
+      const status = snapshot.val();
+      this.setState({
+        open: status === 'open',
+        close: status === 'closed'
+      });
+    });
   }
 
   handleToggle = () => {
-    this.setState({ showText: false, showText1: true, buttont1: true, d1: true });
+    this.setState({ showText: false, showText1: true, buttont1: true, d1: true, bb:true,});
   };
 
+  handleToggle11 = () => {
+    this.setState({ bb:false,});
+  };
   handleToggle1 = () => {
     const { selected } = this.state;
-    push(ref(db, 'submissions'), selected).then(() => {
+    const submission = {
+      ...selected,
+      name: selected.d1
+    };
+
+    push(ref(db, 'submissions'), submission).then(() => {
       this.setState({
         showText: false,
         showText1: false,
@@ -116,10 +195,6 @@ class App extends Component {
         selected: { d1: '', d2: '', d3: '' },
       });
     });
-  };
-
-  handleToggle2 = () => {
-    this.setState({ showText: true, showText1: true, buttont1: true, for: true });
   };
 
   handleToggle3 = () => {
@@ -180,7 +255,7 @@ class App extends Component {
         )}
 
         {!this.state.loggedIn && this.state.showText && (
-          <div >
+          <div>
             {this.state.monsters.map((monster, index) => (
               <div key={index}>
                 <button onClick={this.handleToggle} className='b1'>
@@ -191,13 +266,17 @@ class App extends Component {
           </div>
         )}
 
-        {!this.state.loggedIn && this.state.buttont1 && (
+        {!this.state.loggedIn && this.state.buttont1 && this.state.open && (
           <div style={{ display: 'flex' }}>
-            <button className='b3' onClick={this.handleToggle1}>Save</button>
+            <button className='b1' onClick={this.handleToggle1}>Save</button>
           </div>
         )}
 
-        {this.state.button3 && (
+        {!this.state.loggedIn && this.state.buttont1 && this.state.close && (
+          <p style={{ color: 'red' }}>Submissions are currently closed.</p>
+        )}
+
+        {this.state.bb && this.state.button3 && (
           <button id='bb' className='bb' onClick={this.handleToggle3}>Back</button>
         )}
 
@@ -211,6 +290,5 @@ class App extends Component {
     );
   }
 }
-
 
 export default App;
