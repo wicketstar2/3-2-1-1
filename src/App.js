@@ -6,7 +6,6 @@ import { getDatabase, ref, push, onValue, remove, set } from 'firebase/database'
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import myImage from './Untitled.png';
 
-
 const firebaseConfig = {
   apiKey: "AIzaSyBIvqgkOnORK4jjr1s7-IUnjUUVIEIeQ44",
   authDomain: "project-3145442148108828130.firebaseapp.com",
@@ -43,13 +42,8 @@ function Login({ onLogin }) {
       <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
       <button type="submit">Login</button>
     </form>
-  
-);  
+  );  
 }
-
-
-
-
 
 function MyComponent() {
   return (
@@ -71,18 +65,34 @@ function MyComponent() {
   );
 }
 
- 
-
-
 function AdminPanel() {
   const [entries, setEntries] = useState([]);
   const [submissionStatus, setSubmissionStatus] = useState('closed');
+  const [topPlayer, setTopPlayer] = useState('');
 
   useEffect(() => {
     const submissionsRef = ref(db, 'submissions');
     onValue(submissionsRef, (snapshot) => {
       const data = snapshot.val();
-      setEntries(data ? Object.values(data) : []);
+      const values = data ? Object.values(data) : [];
+      setEntries(values);
+
+      const pointsMap = {};
+      values.forEach(entry => {
+        if (entry.d1) pointsMap[entry.d1] = (pointsMap[entry.d1] || 0) + 3;
+        if (entry.d2) pointsMap[entry.d2] = (pointsMap[entry.d2] || 0) + 2;
+        if (entry.d3) pointsMap[entry.d3] = (pointsMap[entry.d3] || 0) + 1;
+      });
+
+      let maxPoints = 0;
+      let top = '';
+      for (const player in pointsMap) {
+        if (pointsMap[player] > maxPoints) {
+          maxPoints = pointsMap[player];
+          top = player;
+        }
+      }
+      setTopPlayer(top);
     });
 
     const statusRef = ref(db, 'submissionStatus');
@@ -97,6 +107,7 @@ function AdminPanel() {
       .then(() => {
         alert('All data cleared!');
         setEntries([]);
+        setTopPlayer('');
       })
       .catch((error) => {
         console.error('Error clearing data: ', error);
@@ -112,16 +123,19 @@ function AdminPanel() {
 
   return (
     <div style={{ overflowX: 'auto' }}>
-      <h3>Admin Panel</h3>
-      <button id='b1' className='b1' onClick={() => toggleSubmission('open')} style={{ margin: '10px', backgroundColor: 'green', color: 'white' }}>
+      <h3 style={{ fontSize: '20px' }}>Admin Panel</h3>
+      <button id='b1' className='b1' onClick={() => toggleSubmission('open')} style={{ fontSize: '15px', margin: '10px', backgroundColor: 'green', color: 'white' }}>
         Open Submission
       </button>
-      <button className='b1' onClick={() => toggleSubmission('closed')} style={{ margin: '10px', backgroundColor: 'orange', color: 'white' }}>
+      <button className='b1' onClick={() => toggleSubmission('closed')} style={{ fontSize: '15px', margin: '10px', backgroundColor: 'orange', color: 'white' }}>
         Close Submission
       </button>
-      <button className='b1' onClick={handleClearData} style={{ margin: '20px 0', padding: '10px', backgroundColor: 'red', color: 'white' }}>
+      <button className='b1' onClick={handleClearData} style={{ fontSize: '15px', margin: '20px 0', padding: '10px', backgroundColor: 'red', color: 'white' }}>
         Clear All Data
       </button>
+      {submissionStatus === 'closed' && topPlayer && (
+        <p style={{ fontWeight: 'bold', marginTop: '10px' }}>Top voted player: {topPlayer}</p>
+      )}
       <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '20px', fontFamily: 'Arial, sans-serif' }}>
         <thead style={{ backgroundColor: '#f4f4f4' }}>
           <tr>
@@ -166,9 +180,13 @@ const rowStyleOdd = {
   backgroundColor: '#ffffff'
 };
 
+// ... rest of the App component remains unchanged
+
+
 class App extends Component {
   constructor() {
     super();
+    this.submissionCloseTimer = null;
     this.state = {
       monsters: [],
       selected: { d1: '', d2: '', d3: '' },
@@ -196,12 +214,45 @@ class App extends Component {
     const statusRef = ref(db, 'submissionStatus');
     onValue(statusRef, (snapshot) => {
       const status = snapshot.val();
+      const isOpen = status === 'open';
+      const isClosed = status === 'closed';
+
       this.setState({
-        open: status === 'open',
-        close: status === 'closed'
+        open: isOpen,
+        close: isClosed
       });
+
+      if (isOpen) {
+        if (this.submissionCloseTimer) clearTimeout(this.submissionCloseTimer);
+        this.submissionCloseTimer = setTimeout(this.runAfterThirtyMinutes, 30 *60* 1000);
+      } else {
+        if (this.submissionCloseTimer) {
+          clearTimeout(this.submissionCloseTimer);
+          this.submissionCloseTimer = null;
+        }
+      }
     });
   }
+
+  componentWillUnmount() {
+    if (this.submissionCloseTimer) {
+      clearTimeout(this.submissionCloseTimer);
+    }
+  }
+
+  runAfterThirtyMinutes = () => {
+    console.log("⏱️ 30 minutes have passed! Submissions will now be closed.");
+    set(ref(db, 'submissionStatus'), 'closed')
+      .then(() => {
+        this.setState({ open: false, close: true });
+      })
+      .catch((err) => {
+        console.error("Failed to auto-close submissions:", err);
+      });
+  };
+
+  // ... rest of your methods (handleToggle, handleToggle11, handleToggle1, etc.)
+
 
   handleToggle = () => {
     this.setState({ showText: false, showText1: true, buttont1: true, d1: true, bb: true, button3: true });
@@ -273,11 +324,16 @@ class App extends Component {
   render() {
     return (
       <div className='App'>
+
+
+
+        
         {!this.state.loggedIn && (
           <button id='bbb' className='bbb' onClick={() => this.setState({ showLogin: !this.state.showLogin })}>
             {this.state.showLogin ? 'Hide Login' : 'Show Admin Login'}
           </button>
         )}
+
 
         {this.state.showLogin && !this.state.loggedIn && (
           <Login onLogin={() => this.setState({ loggedIn: true, showLogin: false })} />
@@ -319,7 +375,7 @@ class App extends Component {
 
         {this.state.loggedIn && (
           <>
-            <h2>Admin Table</h2>
+            <h2></h2>
             <AdminPanel />
 
             {/* Back to Home Button */}
