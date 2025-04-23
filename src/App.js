@@ -4,6 +4,8 @@ import monstersData from './Book1.json';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, push, onValue, remove, set } from 'firebase/database';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import myImage from './Untitled.png';
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyBIvqgkOnORK4jjr1s7-IUnjUUVIEIeQ44",
@@ -41,8 +43,36 @@ function Login({ onLogin }) {
       <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
       <button type="submit">Login</button>
     </form>
+  
+);  
+}
+
+
+
+
+
+function MyComponent() {
+  return (
+    <button
+      style={{
+        backgroundImage: `url(${myImage})`,
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        width: '100px', 
+        height: '100px',
+        border: 'none',
+        cursor: 'pointer',
+      }}
+      onClick={() => {
+        alert('Button clicked!');
+      }}
+    >
+    </button>
   );
 }
+
+ 
+
 
 function AdminPanel() {
   const [entries, setEntries] = useState([]);
@@ -83,13 +113,13 @@ function AdminPanel() {
   return (
     <div style={{ overflowX: 'auto' }}>
       <h3>Admin Panel</h3>
-      <button onClick={() => toggleSubmission('open')} style={{ margin: '10px', backgroundColor: 'green', color: 'white' }}>
+      <button id='b1' className='b1' onClick={() => toggleSubmission('open')} style={{ margin: '10px', backgroundColor: 'green', color: 'white' }}>
         Open Submission
       </button>
-      <button onClick={() => toggleSubmission('closed')} style={{ margin: '10px', backgroundColor: 'orange', color: 'white' }}>
+      <button className='b1' onClick={() => toggleSubmission('closed')} style={{ margin: '10px', backgroundColor: 'orange', color: 'white' }}>
         Close Submission
       </button>
-      <button onClick={handleClearData} style={{ margin: '20px 0', padding: '10px', backgroundColor: 'red', color: 'white' }}>
+      <button className='b1' onClick={handleClearData} style={{ margin: '20px 0', padding: '10px', backgroundColor: 'red', color: 'white' }}>
         Clear All Data
       </button>
       <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '20px', fontFamily: 'Arial, sans-serif' }}>
@@ -154,7 +184,9 @@ class App extends Component {
       loggedIn: false,
       close: false,
       open: false,
-      bb:false,
+      bb: false,
+      bc: true,
+      MyComponent: true,
     };
   }
 
@@ -172,12 +204,13 @@ class App extends Component {
   }
 
   handleToggle = () => {
-    this.setState({ showText: false, showText1: true, buttont1: true, d1: true, bb:true,});
+    this.setState({ showText: false, showText1: true, buttont1: true, d1: true, bb: true, button3: true });
   };
 
   handleToggle11 = () => {
-    this.setState({ bb:false,});
+    this.setState({ bb: false });
   };
+
   handleToggle1 = () => {
     const { selected } = this.state;
     const submission = {
@@ -198,7 +231,11 @@ class App extends Component {
   };
 
   handleToggle3 = () => {
-    this.setState({ showText: true, showText1: true, buttont1: false, for: true, d1: false });
+    this.setState({ showText: true, showText1: true, buttont1: false, for: true, d1: false, bb: false, button3: false });
+  };
+
+  handleToggle4 = () => {
+    this.setState({ bc: true });
   };
 
   handleSelectChange = (dropdownId, value) => {
@@ -284,11 +321,21 @@ class App extends Component {
           <>
             <h2>Admin Table</h2>
             <AdminPanel />
+
+            {/* Back to Home Button */}
+            <button
+              className='b1'
+              style={{ marginTop: '20px', backgroundColor: '#007bff', color: 'white', padding: '10px' }}
+              onClick={() => this.setState({ loggedIn: false })}
+            >
+              Back to Home
+            </button>
           </>
         )}
       </div>
     );
   }
 }
+
 
 export default App;
