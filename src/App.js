@@ -27,7 +27,7 @@ function Login({ onLogin }) {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (email === 'admin@admin.com' && password === 'admin123') {
+    if (email === '123@123.com' && password === '123') {
       onLogin();
     } else {
       signInWithEmailAndPassword(auth, email, password)
@@ -68,7 +68,7 @@ function MyComponent() {
 function AdminPanel() {
   const [entries, setEntries] = useState([]);
   const [submissionStatus, setSubmissionStatus] = useState('closed');
-  const [topPlayer, setTopPlayer] = useState('');
+  const [topThree, setTopThree] = useState([]);
 
   useEffect(() => {
     const submissionsRef = ref(db, 'submissions');
@@ -84,15 +84,10 @@ function AdminPanel() {
         if (entry.d3) pointsMap[entry.d3] = (pointsMap[entry.d3] || 0) + 1;
       });
 
-      let maxPoints = 0;
-      let top = '';
-      for (const player in pointsMap) {
-        if (pointsMap[player] > maxPoints) {
-          maxPoints = pointsMap[player];
-          top = player;
-        }
-      }
-      setTopPlayer(top);
+      const sortedPlayers = Object.entries(pointsMap)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3);
+      setTopThree(sortedPlayers);
     });
 
     const statusRef = ref(db, 'submissionStatus');
@@ -107,7 +102,7 @@ function AdminPanel() {
       .then(() => {
         alert('All data cleared!');
         setEntries([]);
-        setTopPlayer('');
+        setTopThree([]);
       })
       .catch((error) => {
         console.error('Error clearing data: ', error);
@@ -133,9 +128,24 @@ function AdminPanel() {
       <button className='b1' onClick={handleClearData} style={{ fontSize: '15px', margin: '20px 0', padding: '10px', backgroundColor: 'red', color: 'white' }}>
         Clear All Data
       </button>
-      {submissionStatus === 'closed' && topPlayer && (
-        <p style={{ fontWeight: 'bold', marginTop: '10px' }}>Top voted player: {topPlayer}</p>
+
+      {submissionStatus === 'closed' && topThree.length > 0 && (
+        <div style={{ margin: '20px 0', fontWeight: 'bold' }}>
+          <p>🏆 Top Voted Players For This Week:</p>
+          <ul style={{ listStyleType: 'none', paddingLeft: 0 }}>
+  {topThree.map(([player, points], index) => (
+    <li key={index}>
+      {index === 0 && '🥇 '}
+      {index === 1 && '🥈 '}
+      {index === 2 && '🥉 '}
+      {player} - {points} points
+    </li>
+  ))}
+</ul>
+
+        </div>
       )}
+
       <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '20px', fontFamily: 'Arial, sans-serif' }}>
         <thead style={{ backgroundColor: '#f4f4f4' }}>
           <tr>
@@ -159,6 +169,7 @@ function AdminPanel() {
     </div>
   );
 }
+
 
 const thStyle = {
   padding: '12px',
@@ -381,13 +392,22 @@ class App extends Component {
             {/* Back to Home Button */}
             <button
               className='b1'
-              style={{ marginTop: '20px', backgroundColor: '#007bff', color: 'white', padding: '10px' }}
+              style={{ position: 'absolute',
+                top: '10px',
+                left: '10px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                padding: '10px',
+                zIndex: 1000, marginTop: '20px', backgroundColor: '#007bff', color: 'white', padding: '10px' }}
               onClick={() => this.setState({ loggedIn: false })}
             >
               Back to Home
             </button>
           </>
+
+          
         )}
+    
       </div>
     );
   }
