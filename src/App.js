@@ -90,7 +90,7 @@ function Login({ onLogin }) {
 }
 
 // Redesigned Admin Panel
-function AdminPanel({ onAddPlayer, onToggleSubmission }) {
+function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion }) {
   const [currentEntries, setCurrentEntries] = useState([]);
   const [previousEntries, setPreviousEntries] = useState({});
   const [submissionStatus, setSubmissionStatus] = useState('closed');
@@ -170,22 +170,29 @@ function AdminPanel({ onAddPlayer, onToggleSubmission }) {
     if (window.confirm('Are you sure you want to clear all current voting data? This action cannot be undone.')) {
       remove(ref(db, 'currentSubmissions'))
         .then(() => {
-          remove(ref(db, 'selectedPlayers'))
+          remove(ref(db, 'currentTopThree'))
             .then(() => {
-              remove(ref(db, 'votedUsers'))
+              remove(ref(db, 'selectedPlayers'))
                 .then(() => {
-                  setCurrentEntries([]);
-                  setCurrentTopThree([]);
-                  alert('Current voting data cleared successfully!');
+                  remove(ref(db, 'votedUsers'))
+                    .then(() => {
+                      setCurrentEntries([]);
+                      setCurrentTopThree([]);
+                      alert('Current voting data cleared successfully!');
+                    })
+                    .catch((error) => {
+                      console.error('Error clearing voted users data: ', error);
+                      alert('Error clearing voted users data');
+                    });
                 })
                 .catch((error) => {
-                  console.error('Error clearing voted users data: ', error);
-                  alert('Error clearing voted users data');
+                  console.error('Error clearing selected players data: ', error);
+                  alert('Error clearing selected players data');
                 });
             })
             .catch((error) => {
-              console.error('Error clearing selected players data: ', error);
-              alert('Error clearing selected players data');
+              console.error('Error clearing current top three data: ', error);
+              alert('Error clearing current top three data');
             });
         })
         .catch((error) => {
@@ -233,6 +240,12 @@ function AdminPanel({ onAddPlayer, onToggleSubmission }) {
           onClick={onAddPlayer}
         >
           Add Player
+        </button>
+        <button
+          className="action-button champion-button"
+          onClick={onShowOverallChampion}
+        >
+          Show Overall Champion
         </button>
         <select
           className="action-button select-previous-data"
@@ -361,6 +374,23 @@ function AdminPanel({ onAddPlayer, onToggleSubmission }) {
   );
 }
 
+// Overall Champion Display Component
+function OverallChampion({ overallChampion, onClose }) {
+  return (
+    <div className="overall-champion-modal">
+      <div className="champion-card">
+        <h2>🏆 Overall Champion 🏆</h2>
+        {overallChampion ? (
+          <p className="champion-name">{overallChampion.player} with {overallChampion.totalPoints} total points!</p>
+        ) : (
+          <p>No overall champion data available yet.</p>
+        )}
+        <button className="action-button back-button" onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
 // Add Player Form Component
 function AddPlayerForm({ onNewPlayer, onCancel }) {
   const [newPlayerName, setNewPlayerName] = useState('');
@@ -405,7 +435,7 @@ class App extends Component {
     this.state = {
       players: [],
       selected: { d1: '', d2: '', d3: '' },
-      currentStep: 'playerList', // playerList, selection, submitted, addPlayer
+      currentStep: 'playerList', // playerList, selection, submitted, addPlayer, overallChampion
       isAdmin: false,
       showLogin: false,
       submissionStatus: 'closed',
@@ -418,6 +448,8 @@ class App extends Component {
       lastClickedPlayer: null, // Store the name of the last clicked player
       isAddingPlayer: false,
       lastDataSnapshotDate: null,
+      overallChampion: null,
+      showOverallChampionModal: false,
     };
   }
 
@@ -433,7 +465,6 @@ class App extends Component {
     const statusRef = ref(db, 'submissionStatus');
     const selectedPlayersRef = ref(db, 'selectedPlayers');
     const votedUsersRef = ref(db, 'votedUsers');
-    const currentSubmissionsRef = ref(db, 'currentSubmissions');
 
     onValue(statusRef, (snapshot) => {
       const status = snapshot.val() || 'closed';
@@ -474,13 +505,24 @@ class App extends Component {
     });
 
     // Start interval to check for a new day
-    this.dailyDataCheckInterval = setInterval(this.checkForNewDay, 24 * 60 * 60 * 1000); // Check every 24 hours
+    this.dailyDataCheckInterval = setInterval(this.checkForNewDay,1 * 1000); // Check every 24 hours
 
     // Get the date of the last data snapshot
     get(ref(db, 'lastDataSnapshotDate'))
       .then(snapshot => {
         this.setState({ lastDataSnapshotDate: snapshot.val() });
       });
+
+    // Fetch initial top three data (if any)
+    onValue(ref(db, 'currentTopThree'), (snapshot) => {
+      const topThree = snapshot.val() ? Object.values(snapshot.val()) : [];
+      this.setState({ currentTopThree: topThree.map(item => [item.player, item.points]) });
+    });
+
+    // Fetch initial overall champion data (if any)
+    onValue(ref(db, 'overallChampion'), (snapshot) => {
+      this.setState({ overallChampion: snapshot.val() });
+    });
   }
 
   componentWillUnmount() {
@@ -506,8 +548,10 @@ class App extends Component {
   moveCurrentDataToPrevious = () => {
     const today = new Date().toISOString().split('T')[0];
     const currentSubmissionsRef = ref(db, 'currentSubmissions');
+    const currentTopThreeRef = ref(db, 'currentTopThree');
     const previousSubmissionsRef = ref(db, `previousSubmissions/${today}`);
 
+    // Move current submissions
     get(currentSubmissionsRef)
       .then(snapshot => {
         const currentData = snapshot.val();
@@ -517,13 +561,32 @@ class App extends Component {
         return null;
       })
       .then(() => remove(currentSubmissionsRef))
-      .then(() => {
-        remove(ref(db, 'selectedPlayers'));
-        remove(ref(db, 'votedUsers'));
-        this.setState({ currentEntries: [], currentTopThree: [], selectedPlayers: [], votedUsers: [] });
-        console.log(`✅ Current data moved to previous submissions for ${today} and current data cleared.`);
+      .then(() => console.log(`✅ Current submissions moved to previous submissions for ${today}.`))
+      .catch(error => console.error("Error moving current submissions:", error));
+
+    // Move current top three
+    get(currentTopThreeRef)
+      .then(snapshot => {
+        const currentTopThreeData = snapshot.val();
+        if (currentTopThreeData) {
+          return set(ref(db, `previousTopThree/${today}`), currentTopThreeData);
+        }
+        return null;
       })
-      .catch(error => console.error("Error moving current data to previous:", error));
+      .then(() => remove(currentTopThreeRef))
+      .then(() => console.log(`✅ Current top three moved to previous top three for ${today}.`))
+      .catch(error => console.error("Error moving current top three:", error));
+
+    // Clear current week's data
+    remove(ref(db, 'selectedPlayers'))
+      .then(() => console.log("✅ Selected players cleared."))
+      .catch(error => console.error("Error clearing selected players:", error));
+    remove(ref(db, 'votedUsers'))
+      .then(() => {
+        this.setState({ currentEntries: [], currentTopThree: [], selectedPlayers: [], votedUsers: [] });
+        console.log("✅ Voted users cleared.");
+      })
+      .catch(error => console.error("Error clearing voted users:", error));
   };
 
   // Generate a simple user ID based on browser properties
@@ -617,6 +680,9 @@ class App extends Component {
           lastClickedPlayer: null // Reset last clicked player
         });
 
+        // Calculate and update top three
+        this.updateTopThree();
+
         // Auto-reset after 3 seconds
         setTimeout(() => {
           this.setState({ currentStep: 'playerList' });
@@ -626,6 +692,28 @@ class App extends Component {
         console.error("Error submitting vote:", error);
         this.setState({ userMessage: "Failed to submit your vote. Please try again." });
       });
+  };
+
+  updateTopThree = () => {
+    const currentSubmissionsRef = ref(db, 'currentSubmissions');
+    get(currentSubmissionsRef)
+      .then(snapshot => {
+        const data = snapshot.val();
+        const values = data ? Object.values(data) : [];
+        const pointsMap = {};
+        values.forEach(entry => {
+          if (entry.d1) pointsMap[entry.d1] = (pointsMap[entry.d1] || 0) + 3;
+          if (entry.d2) pointsMap[entry.d2] = (pointsMap[entry.d2] || 0) + 2;
+          if (entry.d3) pointsMap[entry.d3] = (pointsMap[entry.d3] || 0) + 1;
+        });
+        const sortedPlayers = Object.entries(pointsMap)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 3)
+          .map(([player, points]) => ({ player, points })); // Format for storing in Firebase
+        set(ref(db, 'currentTopThree'), sortedPlayers)
+          .catch(error => console.error("Error updating top three:", error));
+      })
+      .catch(error => console.error("Error fetching current submissions for top three:", error));
   };
 
   handleSelectChange = (dropdownId, value) => {
@@ -709,7 +797,7 @@ class App extends Component {
   };
 
   handleAdminLogin = () => {
-    this.setState({ isAdmin: true, showLogin: false, isAddingPlayer: false });
+    this.setState({ isAdmin: true, showLogin: false, isAddingPlayer: false, showOverallChampionModal: false });
   };
 
   handleAddPlayerClick = () => {
@@ -766,9 +854,48 @@ class App extends Component {
     }
   };
 
-  render() {
-    const { currentStep, isAdmin, showLogin, userMessage, loading, isAddingPlayer, submissionStatus } = this.state;
+  handleShowOverallChampion = () => {
+    const previousSubmissionsRef = ref(db, 'previousSubmissions');
+    get(previousSubmissionsRef)
+      .then(snapshot => {
+        const allPreviousData = snapshot.val();
+        if (allPreviousData) {
+          const overallPoints = {};
+          Object.values(allPreviousData).forEach(dailyData => {
+            if (dailyData) {
+              Object.values(dailyData).forEach(entry => {
+                if (entry.d1) overallPoints[entry.d1] = (overallPoints[entry.d1] || 0) + 3;
+                if (entry.d2) overallPoints[entry.d2] = (overallPoints[entry.d2] || 0) + 2;
+                if (entry.d3) overallPoints[entry.d3] = (overallPoints[entry.d3] || 0) + 1;
+              });
+            }
+          });
+          const sortedOverall = Object.entries(overallPoints)
+            .sort(([, a], [, b]) => b - a)
+            .map(([player, totalPoints]) => ({ player, totalPoints }));
 
+          if (sortedOverall.length > 0) {
+            this.setState({ overallChampion: sortedOverall[0], showOverallChampionModal: true });
+            set(ref(db, 'overallChampion'), sortedOverall[0]); // Optionally save the latest overall champion
+          } else {
+            this.setState({ overallChampion: null, showOverallChampionModal: true });
+          }
+        } else {
+          this.setState({ overallChampion: null, showOverallChampionModal: true });
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching previous submissions:", error);
+        this.setState({ overallChampion: null, showOverallChampionModal: true });
+      });
+  };
+
+  handleCloseOverallChampionModal = () => {
+    this.setState({ showOverallChampionModal: false });
+  };
+
+  render() {
+    const { currentStep, isAdmin, showLogin, userMessage, loading, isAddingPlayer, submissionStatus, showOverallChampionModal, overallChampion } = this.state
     if (loading) {
       return (
         <div className="app-container">
@@ -786,14 +913,22 @@ class App extends Component {
           {isAddingPlayer ? (
             <AddPlayerForm onNewPlayer={this.handleNewPlayerSubmit} onCancel={this.handleCancelAddPlayer} />
           ) : (
-            <AdminPanel onAddPlayer={this.handleAddPlayerClick} onToggleSubmission={this.handleToggleSubmission} />
+            <AdminPanel
+              onAddPlayer={this.handleAddPlayerClick}
+              onToggleSubmission={this.handleToggleSubmission}
+              onShowOverallChampion={this.handleShowOverallChampion}
+            />
           )}
           <button
             className="back-button"
-            onClick={() => this.setState({ isAdmin: false, isAddingPlayer: false })}
+            onClick={() => this.setState({ isAdmin: false, isAddingPlayer: false, showOverallChampionModal: false })}
           >
             Back to Home
           </button>
+
+          {showOverallChampionModal && (
+            <OverallChampion overallChampion={overallChampion} onClose={this.handleCloseOverallChampionModal} />
+          )}
         </div>
       );
     }
