@@ -505,7 +505,7 @@ class App extends Component {
     });
 
     // Start interval to check for a new day
-    this.dailyDataCheckInterval = setInterval(this.checkForNewDay,1 * 1000); // Check every 24 hours
+    this.dailyDataCheckInterval = setInterval(this.checkForNewDay, 24 *60 *60 *1000); // Check every 24 hours
 
     // Get the date of the last data snapshot
     get(ref(db, 'lastDataSnapshotDate'))
