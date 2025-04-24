@@ -75,7 +75,7 @@ body {
 .admin-toggle-button:hover {
   background-color: #495057;
 }
-
+  
 /* Login Form */
 .login-container {
   position: fixed;
@@ -1034,4 +1034,45 @@ body {
   .top-players-card {
     padding: 25px;
   }
+}
+
+/* Edit Players */
+.edit-players-container {
+  padding: 20px;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.edit-player-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.edit-player-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--medium-gray);
+  border-radius: var(--border-radius);
+}
+
+.remove-player-button {
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+}
+
+.remove-player-button:hover {
+  background-color: #c0392b;
 }

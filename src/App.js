@@ -90,7 +90,7 @@ function Login({ onLogin }) {
 }
 
 // Redesigned Admin Panel
-function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion }) {
+function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, onEditPlayers }) {
   const [currentEntries, setCurrentEntries] = useState([]);
   const [previousEntries, setPreviousEntries] = useState({});
   const [submissionStatus, setSubmissionStatus] = useState('closed');
@@ -246,6 +246,12 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion }) 
           onClick={onShowOverallChampion}
         >
           Show Overall Champion
+        </button>
+        <button
+          className="action-button edit-players-button"
+          onClick={onEditPlayers}
+        >
+          Edit Players
         </button>
         <select
           className="action-button select-previous-data"
@@ -426,6 +432,36 @@ function AddPlayerForm({ onNewPlayer, onCancel }) {
   );
 }
 
+// Edit Players Component
+function EditPlayers({ players, onEditName, onRemove, onBack }) {
+  return (
+    <div className="edit-players-container">
+      <h2>Edit Players</h2>
+      <div className="players-list">
+        {players.map((player, index) => (
+          <div key={index} className="edit-player-item">
+            <input
+              type="text"
+              defaultValue={player.Niall}
+              onBlur={(e) => onEditName(player.key, e.target.value)}
+              className="edit-player-input"
+            />
+            <button 
+              className="remove-player-button"
+              onClick={() => onRemove(player.key)}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+      <button className="action-button back-button" onClick={onBack}>
+        Back
+      </button>
+    </div>
+  );
+}
+
 // Main App Component
 class App extends Component {
   constructor() {
@@ -450,13 +486,41 @@ class App extends Component {
       lastDataSnapshotDate: null,
       overallChampion: null,
       showOverallChampionModal: false,
+      isEditingPlayers: false,
     };
   }
 
-  componentDidMount() {
-    // Load player data
-    this.setState({ players: monstersData });
+  handleEditPlayersClick = () => {
+    this.setState({ isEditingPlayers: true });
+  };
 
+  handleEditPlayerName = (playerKey, newName) => {
+    const playerRef = ref(db, `players/${playerKey}`);
+    set(playerRef, { Niall: newName })
+      .then(() => {
+        alert(`Player name updated successfully`);
+      })
+      .catch((error) => {
+        console.error("Error updating player:", error);
+        alert("Failed to update player");
+      });
+  };
+
+  handleRemovePlayer = (playerKey) => {
+    if (window.confirm('Are you sure you want to remove this player?')) {
+      const playerRef = ref(db, `players/${playerKey}`);
+      remove(playerRef)
+        .then(() => {
+          alert('Player removed successfully');
+        })
+        .catch((error) => {
+          console.error("Error removing player:", error);
+          alert("Failed to remove player");
+        });
+    }
+  };
+
+  componentDidMount() {
     // Generate a simple user ID based on browser fingerprint
     const userId = this.generateUserId();
     this.setState({ userId });
@@ -479,7 +543,6 @@ class App extends Component {
       }
     });
 
-    // Get initially selected players
     onValue(selectedPlayersRef, (snapshot) => {
       const selected = snapshot.val();
       this.setState({
@@ -487,7 +550,6 @@ class App extends Component {
       });
     });
 
-    // Get list of users who have already voted
     onValue(votedUsersRef, (snapshot) => {
       const votedUsers = snapshot.val() ? Object.values(snapshot.val()) : [];
       this.setState({
@@ -495,7 +557,6 @@ class App extends Component {
         loading: false
       });
 
-      // Check if current user has already voted
       if (votedUsers.includes(userId)) {
         this.setState({
           userMessage: 'You have already submitted your vote this week.',
@@ -504,24 +565,21 @@ class App extends Component {
       }
     });
 
-    // Start interval to check for a new day
-    this.dailyDataCheckInterval = setInterval(this.checkForNewDay, 24 *60 *60 *1000); // Check every 24 hours
+    // Listen for real-time updates to the players list
+    const playersRef = ref(db, 'players');
+    onValue(playersRef, (snapshot) => {
+      const playersData = snapshot.val();
+      const firebasePlayers = playersData ? Object.values(playersData) : [];
 
-    // Get the date of the last data snapshot
-    get(ref(db, 'lastDataSnapshotDate'))
-      .then(snapshot => {
-        this.setState({ lastDataSnapshotDate: snapshot.val() });
+      // Merge imported players with Firebase players, avoiding duplicates
+      const mergedPlayers = [...firebasePlayers];
+      monstersData.forEach((importedPlayer) => {
+        if (!mergedPlayers.some(player => player.Niall === importedPlayer.Niall)) {
+          mergedPlayers.push(importedPlayer);
+        }
       });
 
-    // Fetch initial top three data (if any)
-    onValue(ref(db, 'currentTopThree'), (snapshot) => {
-      const topThree = snapshot.val() ? Object.values(snapshot.val()) : [];
-      this.setState({ currentTopThree: topThree.map(item => [item.player, item.points]) });
-    });
-
-    // Fetch initial overall champion data (if any)
-    onValue(ref(db, 'overallChampion'), (snapshot) => {
-      this.setState({ overallChampion: snapshot.val() });
+      this.setState({ players: mergedPlayers });
     });
   }
 
@@ -797,7 +855,7 @@ class App extends Component {
   };
 
   handleAdminLogin = () => {
-    this.setState({ isAdmin: true, showLogin: false, isAddingPlayer: false, showOverallChampionModal: false });
+    this.setState({ isAdmin: true, showLogin: false, isAddingPlayer: false, showOverallChampion: false });
   };
 
   handleAddPlayerClick = () => {
@@ -805,13 +863,15 @@ class App extends Component {
   };
 
   handleNewPlayerSubmit = (newPlayer) => {
-    this.setState(prevState => ({
-      players: [...prevState.players, newPlayer],
-      isAddingPlayer: false,
-    }));
-    // Optionally, you can also push the new player to your Firebase database
-    push(ref(db, 'players'), newPlayer)
-      .catch(error => console.error("Error adding player to database:", error));
+    const playersRef = ref(db, 'players');
+    push(playersRef, newPlayer)
+      .then(() => {
+        this.setState({ isAddingPlayer: false });
+      })
+      .catch((error) => {
+        console.error("Error adding player to database:", error);
+        alert("Failed to add player. Please try again.");
+      });
   };
 
   handleCancelAddPlayer = () => {
@@ -895,7 +955,7 @@ class App extends Component {
   };
 
   render() {
-    const { currentStep, isAdmin, showLogin, userMessage, loading, isAddingPlayer, submissionStatus, showOverallChampionModal, overallChampion } = this.state
+    const { currentStep, isAdmin, showLogin, userMessage, loading, isAddingPlayer, submissionStatus, showOverallChampionModal, overallChampion, isEditingPlayers, players } = this.state
     if (loading) {
       return (
         <div className="app-container">
@@ -912,16 +972,24 @@ class App extends Component {
         <div className="app-container admin-mode">
           {isAddingPlayer ? (
             <AddPlayerForm onNewPlayer={this.handleNewPlayerSubmit} onCancel={this.handleCancelAddPlayer} />
+          ) : isEditingPlayers ? (
+            <EditPlayers
+              players={this.state.players}
+              onEditName={this.handleEditPlayerName}
+              onRemove={this.handleRemovePlayer}
+              onBack={() => this.setState({ isEditingPlayers: false })}
+            />
           ) : (
             <AdminPanel
               onAddPlayer={this.handleAddPlayerClick}
               onToggleSubmission={this.handleToggleSubmission}
               onShowOverallChampion={this.handleShowOverallChampion}
+              onEditPlayers={this.handleEditPlayersClick}
             />
           )}
           <button
             className="back-button"
-            onClick={() => this.setState({ isAdmin: false, isAddingPlayer: false, showOverallChampionModal: false })}
+            onClick={() => this.setState({ isAdmin: false, isAddingPlayer: false, showOverallChampionModal: false, isEditingPlayers: false })}
           >
             Back to Home
           </button>
