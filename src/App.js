@@ -119,7 +119,7 @@ function AdminPanel() {
   return (
     <div style={{ overflowX: 'auto' }}>
       <h3 style={{ fontSize: '20px' }}>Admin Panel</h3>
-      <button id='b1' className='b1' onClick={() => toggleSubmission('open')} style={{ fontSize: '15px', margin: '10px', backgroundColor: 'green', color: 'white' }}>
+      <button id='b1' className='b1' onClick={() => toggleSubmission('open')} style={{ fontSize: '15px', margin: '20px 0', padding: '10pxpx', backgroundColor: 'green', color: 'white' }}>
         Open Submission
       </button>
       <button className='b1' onClick={() => toggleSubmission('closed')} style={{ fontSize: '15px', margin: '10px', backgroundColor: 'orange', color: 'white' }}>
@@ -351,7 +351,7 @@ class App extends Component {
         )}
 
         {!this.state.loggedIn && this.state.d1 && (
-          <div className='d' style={{ display: 'flex' }}>
+          <div className='d'>
             {this.renderDropdown('d1', '3')}
             {this.renderDropdown('d2', '2')}
             {this.renderDropdown('d3', '1')}
@@ -359,7 +359,7 @@ class App extends Component {
         )}
 
         {!this.state.loggedIn && this.state.showText && (
-          <div>
+          <div style={{ display: '' }}>
             {this.state.monsters.map((monster, index) => (
               <div key={index}>
                 <button onClick={this.handleToggle} className='b1'>
@@ -407,7 +407,18 @@ class App extends Component {
 
           
         )}
-    
+    <div className="App">
+  <div style={{
+    maxHeight: '90vh',
+    width: '100%',
+    overflowY: 'auto',
+    padding: '10px',
+    boxSizing: 'border-box',
+  }}>
+    {/* Your components here */}
+  </div>
+</div>
+
       </div>
     );
   }
