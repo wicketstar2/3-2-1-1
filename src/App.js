@@ -85,7 +85,7 @@ function Login({ onLogin, onClose }) {
             {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
-        <button type="button" className="close-button" onClick={onClose}>
+        <button type="button" className="close1" onClick={onClose}>
           Close
         </button>
       </div>

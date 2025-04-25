@@ -1155,7 +1155,7 @@ body {
   gap: 5px;
 }
 
-.close-button{
+.close1{
   margin-top: 5px;
   background-color: var(--danger-color);
   color: white;
