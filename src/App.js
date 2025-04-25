@@ -5,6 +5,7 @@ import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import './App.css';
 import monstersData from './Book1.json';
 import { ReactComponent as Loading } from './Gear@1x-0.1s-200px-200px.svg';
+import Loader from './Loader'; // Import the new Loader component
 
 // Firebase configuration
 const firebaseConfig = {
@@ -1248,8 +1249,10 @@ class App extends Component {
       return (
         <div className="app-container">
           <div className="loading-screen">
-            <div className="loading-spinner"></div>
-            <p className='l1'>Loading application...</p><Loading className='l'></Loading>
+            <div className="loading-spinner">
+              <Loader /> {/* Use the new Loader component */}
+            </div>
+            <p className='l1'>Loading application...</p>
           </div>
         </div>
       );

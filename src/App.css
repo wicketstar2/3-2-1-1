@@ -1156,6 +1156,7 @@ body {
 }
 
 .close-button{
+  margin-top: 5px;
   background-color: var(--danger-color);
   color: white;
   border: none;
