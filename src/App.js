@@ -494,7 +494,7 @@ function OverallChampion({ overallChampion, onClose }) {
         ) : (
           <p>No overall champion data available yet.</p>
         )}
-        <button  className="close" onClick={onClose}>Close</button>
+        <button  className="action-button back-button" onClick={onClose}>Close</button>
       </div>
     </div>
   );
