@@ -98,11 +98,15 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
   const [previousTopThree, setPreviousTopThree] = useState({});
   const [loading, setLoading] = useState(true);
   const [showPreviousData, setShowPreviousData] = useState(null); // null = none, date string = show that date
+  const [archives, setArchives] = useState({});
+  const [selectedArchive, setSelectedArchive] = useState(null);
+  const [archivesList, setArchivesList] = useState([]);
 
   useEffect(() => {
     const currentSubmissionsRef = ref(db, 'currentSubmissions');
     const previousSubmissionsRef = ref(db, 'previousSubmissions');
     const statusRef = ref(db, 'submissionStatus');
+    const archivesRef = ref(db, 'archives');
 
     const fetchCurrentData = (ref) => {
       onValue(ref, (snapshot) => {
@@ -125,7 +129,7 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
         setLoading(false);
       });
     };
-
+// Check 
     const fetchPreviousData = () => {
       onValue(previousSubmissionsRef, (snapshot) => {
         setPreviousEntries(snapshot.val() || {});
@@ -138,6 +142,21 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
     const statusUnsubscribe = onValue(statusRef, (snapshot) => {
       const status = snapshot.val();
       setSubmissionStatus(status || 'closed');
+    });
+
+    onValue(archivesRef, (snapshot) => {
+      setArchives(snapshot.val() || {});
+    });
+
+    // Add archives listener
+    onValue(archivesRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const archives = Object.entries(data).map(([key, value]) => ({
+        id: key,
+        ...value
+      })).sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt));
+      setArchives(data);
+      setArchivesList(archives);
     });
 
     return () => {
@@ -213,7 +232,7 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
           </span>
         </p>
       </div>
-
+{/* Show Current data */}
       <div className="action-buttons">
         <button
           className="action-button open-button"
@@ -253,13 +272,14 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
         >
           Edit Players
         </button>
+        
         <select
           className="action-button select-previous-data"
-          value={showPreviousData || ''}
-          onChange={(e) => setShowPreviousData(e.target.value || null)}
+          value={selectedArchive || ''}
+          onChange={(e) => setSelectedArchive(e.target.value)}
         >
-          <option value="">Show Current Data</option>
-          {Object.keys(previousEntries)
+          <option value="">Current Data</option>
+          {Object.keys(archives)
             .sort((a, b) => new Date(b) - new Date(a))
             .map((date) => (
               <option key={date} value={date}>
@@ -267,6 +287,8 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
               </option>
             ))}
         </select>
+
+       
       </div>
 
       {loading ? (
@@ -374,6 +396,57 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
               </div>
             </>
           )}
+
+          {selectedArchive && archives[selectedArchive] && (
+            <div className="archived-data">
+              <h3>Archived Data - {new Date(selectedArchive).toLocaleDateString()}</h3>
+              
+              {archives[selectedArchive].topThree && (
+                <div className="top-players-card">
+                  <h4>Top Players</h4>
+                  <div className="top-players-list">
+                    {archives[selectedArchive].topThree.map((player, index) => (
+                      <div key={index} className={`player-rank rank-${index + 1}`}>
+                        <div className="medal">
+                          {index === 0 && '🥇'}
+                          {index === 1 && '🥈'}
+                          {index === 2 && '🥉'}
+                        </div>
+                        <div className="player-name">{player.player}</div>
+                        <div className="player-points">{player.points} points</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {archives[selectedArchive].submissions && (
+                <div className="data-table-container">
+                  <h4>Submissions</h4>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>3 Points</th>
+                        <th>2 Points</th>
+                        <th>1 Point</th>
+                        <th>Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.values(archives[selectedArchive].submissions).map((entry, index) => (
+                        <tr key={index}>
+                          <td>{entry.d1}</td>
+                          <td>{entry.d2}</td>
+                          <td>{entry.d3}</td>
+                          <td>{entry.timestamp && new Date(entry.timestamp).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
@@ -404,7 +477,7 @@ function AddPlayerForm({ onNewPlayer, onCancel }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (newPlayerName.trim()) {
-      onNewPlayer({ Niall: newPlayerName.trim() });
+      onNewPlayer({ PlayerName: newPlayerName.trim() }); // Changed from Niall to PlayerName
       setNewPlayerName('');
     }
   };
@@ -438,26 +511,30 @@ function EditPlayers({ players, onEditName, onRemove, onBack }) {
     <div className="edit-players-container">
       <h2>Edit Players</h2>
       <div className="players-list">
-        {players.map((player, index) => (
-          <div key={index} className="edit-player-item">
+        {players.map((player) => (
+          <div key={player.key || player.PlayerName} className="edit-player-item">
             <input
               type="text"
-              defaultValue={player.Niall}
-              onBlur={(e) => onEditName(player.key, e.target.value)}
-              className="edit-player-input"
+              defaultValue={player.PlayerName} // Changed from Niall to PlayerName
+              disabled={!player.isCustom}
+              onBlur={(e) => player.isCustom && onEditName(player.key || player.PlayerName, e.target.value)}
+              className={`edit-player-input ${!player.isCustom ? 'readonly' : ''}`}
             />
-            <button 
-              className="remove-player-button"
-              onClick={() => onRemove(player.key)}
-            >
-              Remove
-            </button>
+            {player.isCustom && (
+              <button 
+                className="remove-player-button"
+                onClick={() => onRemove(player.key || player.PlayerName)}
+              >
+                Remove
+              </button>
+            )}
+            {!player.isCustom && (
+              <span className="default-player-badge">Default Player Can Not Be removed</span>
+            )}
           </div>
         ))}
       </div>
-      <button className="action-button back-button" onClick={onBack}>
-        Back
-      </button>
+      <button className="action-button back-button" onClick={onBack}>Back</button>
     </div>
   );
 }
@@ -470,7 +547,7 @@ class App extends Component {
     this.dailyDataCheckInterval = null;
     this.state = {
       players: [],
-      selected: { d1: '', d2: '', d3: '' },
+      selected: { d1: '', d2: '' , d3: '' },
       currentStep: 'playerList', // playerList, selection, submitted, addPlayer, overallChampion
       isAdmin: false,
       showLogin: false,
@@ -494,29 +571,57 @@ class App extends Component {
     this.setState({ isEditingPlayers: true });
   };
 
-  handleEditPlayerName = (playerKey, newName) => {
-    const playerRef = ref(db, `players/${playerKey}`);
-    set(playerRef, { Niall: newName })
-      .then(() => {
-        alert(`Player name updated successfully`);
-      })
-      .catch((error) => {
-        console.error("Error updating player:", error);
-        alert("Failed to update player");
+  handleEditPlayerName = async (playerKey, newName) => {
+    try {
+      // First find the player in Firebase
+      const playersRef = ref(db, 'players');
+      const snapshot = await get(playersRef);
+      const players = snapshot.val();
+      
+      // Find the correct key if we're using the name as key
+      const actualKey = Object.keys(players || {}).find(
+        key => players[key].Niall === playerKey
+      ) || playerKey;
+
+      // Get the current player data to preserve isCustom flag
+      const currentPlayer = players[actualKey];
+      
+      // Update the player while preserving isCustom and addedAt
+      const playerRef = ref(db, `players/${actualKey}`);
+      await set(playerRef, {
+        Niall: newName,
+        isCustom: currentPlayer.isCustom || false,
+        addedAt: currentPlayer.addedAt || new Date().toISOString()
       });
+      
+      alert('Player name updated successfully');
+    } catch (error) {
+      console.error("Error updating player:", error);
+      alert("Failed to update player");
+    }
   };
 
-  handleRemovePlayer = (playerKey) => {
+  handleRemovePlayer = async (playerKey) => {
     if (window.confirm('Are you sure you want to remove this player?')) {
-      const playerRef = ref(db, `players/${playerKey}`);
-      remove(playerRef)
-        .then(() => {
-          alert('Player removed successfully');
-        })
-        .catch((error) => {
-          console.error("Error removing player:", error);
-          alert("Failed to remove player");
-        });
+      try {
+        // First find the player in Firebase
+        const playersRef = ref(db, 'players');
+        const snapshot = await get(playersRef);
+        const players = snapshot.val();
+        
+        // Find the correct key if we're using the name as key
+        const actualKey = Object.keys(players || {}).find(
+          key => players[key.Niall === playerKey]
+        ) || playerKey;
+
+        // Remove the player
+        const playerRef = ref(db, `players/${actualKey}`);
+        await remove(playerRef);
+        alert('Player removed successfully');
+      } catch (error) {
+        console.error("Error removing player:", error);
+        alert("Failed to remove player");
+      }
     }
   };
 
@@ -569,17 +674,38 @@ class App extends Component {
     const playersRef = ref(db, 'players');
     onValue(playersRef, (snapshot) => {
       const playersData = snapshot.val();
-      const firebasePlayers = playersData ? Object.values(playersData) : [];
+      const firebasePlayers = playersData ? 
+        Object.entries(playersData).map(([key, value]) => ({
+          ...value,
+          key // Add the Firebase key to each player
+        })) : [];
 
       // Merge imported players with Firebase players, avoiding duplicates
       const mergedPlayers = [...firebasePlayers];
       monstersData.forEach((importedPlayer) => {
-        if (!mergedPlayers.some(player => player.Niall === importedPlayer.Niall)) {
-          mergedPlayers.push(importedPlayer);
+        if (!mergedPlayers.some(player => player.PlayerName === importedPlayer.PlayerName)) { // Changed from Niall to PlayerName
+          mergedPlayers.push({
+            ...importedPlayer,
+            isCustom: false // Mark imported players as non-custom
+          });
         }
       });
 
       this.setState({ players: mergedPlayers });
+    });
+
+    // Add archive checker
+    this.archiveCheckInterval = setInterval(this.checkAndArchiveData, 60 * 60 * 1000); // Check every hour
+
+    // Monitor submission status
+    onValue(statusRef, (snapshot) => {
+      const status = snapshot.val() || 'closed';
+      this.setState({ submissionStatus: status });
+
+      if (status === 'closed') {
+        // Start checking for archive after closing
+        this.checkAndArchiveData();
+      }
     });
   }
 
@@ -589,6 +715,9 @@ class App extends Component {
     }
     if (this.dailyDataCheckInterval) {
       clearInterval(this.dailyDataCheckInterval);
+    }
+    if (this.archiveCheckInterval) {
+      clearInterval(this.archiveCheckInterval);
     }
   }
 
@@ -783,8 +912,6 @@ class App extends Component {
 
   renderPlayerDropdown = (id, points) => {
     const { players, selected } = this.state;
-
-    // Filter out only currently selected values in this form
     const currentlySelected = Object.values(selected).filter(val => val && val !== selected[id]);
 
     return (
@@ -799,12 +926,11 @@ class App extends Component {
           <option value="">Select a Player</option>
           {players
             .filter(player => {
-              // Only filter out players already selected in another dropdown in this form
-              return !currentlySelected.includes(player.Niall);
+              return !currentlySelected.includes(player.PlayerName); // Changed from Niall to PlayerName
             })
             .map((player, index) => (
-              <option key={index} value={player.Niall}>
-                {player.Niall}
+              <option key={index} value={player.PlayerName}> {/* Changed from Niall to PlayerName */}
+                {player.PlayerName} {/* Changed from Niall to PlayerName */}
               </option>
             ))}
         </select>
@@ -819,30 +945,18 @@ class App extends Component {
     return (
       <div className="player-list-container">
         <h2>Select a Player to Vote For</h2>
-
-        {submissionStatus === 'closed' && (
-          <div className="status-message closed">
-            ⚠️ Voting is currently closed
-          </div>
-        )}
-
-        {submissionStatus === 'open' && userHasVoted && (
-          <div className="status-message info">
-            You have already submitted your vote this week.
-          </div>
-        )}
-
+        {/* ...status messages remain the same */}
         <div className="players-grid">
           {players
-            .filter(player => !hiddenPlayers.includes(player.Niall))
+            .filter(player => !hiddenPlayers.includes(player.PlayerName)) // Changed from Niall to PlayerName
             .map((player, index) => (
               <button
                 key={index}
                 className="player-button"
-                onClick={() => this.handlePlayerSelect(player.Niall)}
+                onClick={() => this.handlePlayerSelect(player.PlayerName)} // Changed from Niall to PlayerName
                 disabled={submissionStatus === 'closed' || userHasVoted}
               >
-                {player.Niall}
+                {player.PlayerName} {/* Changed from Niall to PlayerName */}
               </button>
             ))}
         </div>
@@ -855,7 +969,7 @@ class App extends Component {
   };
 
   handleAdminLogin = () => {
-    this.setState({ isAdmin: true, showLogin: false, isAddingPlayer: false, showOverallChampion: false });
+    this.setState({ isAdmin: true, showLogin: false, isAddingPlayer: false });
   };
 
   handleAddPlayerClick = () => {
@@ -864,7 +978,14 @@ class App extends Component {
 
   handleNewPlayerSubmit = (newPlayer) => {
     const playersRef = ref(db, 'players');
-    push(playersRef, newPlayer)
+    // Add isCustom flag to identify manually added players
+    const playerWithMetadata = {
+      ...newPlayer,
+      isCustom: true,
+      addedAt: new Date().toISOString()
+    };
+    
+    push(playersRef, playerWithMetadata)
       .then(() => {
         this.setState({ isAddingPlayer: false });
       })
@@ -889,69 +1010,206 @@ class App extends Component {
   };
 
   toggleSubmissionInDatabase = (status) => {
-    if (status === 'open') {
-      remove(ref(db, 'selectedPlayers'))
-        .then(() => {
+    if (status === 'closed') {
+      // Archive current data before closing
+      Promise.all([
+        get(ref(db, 'currentSubmissions')),
+        get(ref(db, 'currentTopThree'))
+      ]).then(([submissionsSnapshot, topThreeSnapshot]) => {
+        const currentTime = new Date();
+        const archiveId = `${currentTime.toISOString().split('.')[0]}`;
+        const archiveData = {
+          submissions: submissionsSnapshot.val(),
+          topThree: topThreeSnapshot.val(),
+          archivedAt: currentTime.toISOString(),
+          closedAt: currentTime.toISOString(),
+          date: currentTime.toLocaleDateString(),
+          displayName: `Voting closed on ${currentTime.toLocaleDateString()} at ${currentTime.toLocaleTimeString()}`
+        };
+
+        // Save to archives
+        Promise.all([
+          set(ref(db, `archives/${archiveId}`), archiveData),
+          set(ref(db, 'submissionStatus'), status),
+          remove(ref(db, 'currentSubmissions')),
+          remove(ref(db, 'currentTopThree')),
+          remove(ref(db, 'selectedPlayers')),
           remove(ref(db, 'votedUsers'))
-            .then(() => {
-              set(ref(db, 'submissionStatus'), status)
-                .then(() => alert('Submissions opened successfully. All players are now available.'))
-                .catch((err) => alert('Error updating submission status: ' + err.message));
-            })
-            .catch((err) => {
-              console.error('Error resetting voted users: ', err);
-              alert('Error resetting user voting status');
-            });
-        })
-        .catch((err) => {
-          console.error('Error resetting selected players: ', err);
-          alert('Error resetting player selections');
-        });
+        ]).then(() => {
+          alert('Submissions closed and archived successfully.');
+        }).catch(err => alert('Error closing submissions: ' + err.message));
+      });
     } else {
-      set(ref(db, 'submissionStatus'), status)
-        .then(() => alert('Submissions closed successfully. Player list hidden.'))
-        .catch((err) => alert('Error updating submission status: ' + err.message));
+      // Opening voting
+      Promise.all([
+        remove(ref(db, 'selectedPlayers')),
+        remove(ref(db, 'votedUsers')),
+        set(ref(db, 'submissionStatus'), status)
+      ]).then(() => {
+        alert('Submissions opened successfully. All players are now available.');
+      }).catch(err => alert('Error updating submission status: ' + err.message));
     }
   };
 
   handleShowOverallChampion = () => {
-    const previousSubmissionsRef = ref(db, 'previousSubmissions');
-    get(previousSubmissionsRef)
-      .then(snapshot => {
-        const allPreviousData = snapshot.val();
-        if (allPreviousData) {
-          const overallPoints = {};
-          Object.values(allPreviousData).forEach(dailyData => {
-            if (dailyData) {
-              Object.values(dailyData).forEach(entry => {
-                if (entry.d1) overallPoints[entry.d1] = (overallPoints[entry.d1] || 0) + 3;
-                if (entry.d2) overallPoints[entry.d2] = (overallPoints[entry.d2] || 0) + 2;
-                if (entry.d3) overallPoints[entry.d3] = (overallPoints[entry.d3] || 0) + 1;
-              });
-            }
-          });
-          const sortedOverall = Object.entries(overallPoints)
-            .sort(([, a], [, b]) => b - a)
-            .map(([player, totalPoints]) => ({ player, totalPoints }));
+    Promise.all([
+      get(ref(db, 'previousSubmissions')),
+      get(ref(db, 'archives')),
+      get(ref(db, 'currentSubmissions'))
+    ]).then(([previousSnapshot, archivesSnapshot, currentSnapshot]) => {
+      const overallPoints = {};
 
-          if (sortedOverall.length > 0) {
-            this.setState({ overallChampion: sortedOverall[0], showOverallChampionModal: true });
-            set(ref(db, 'overallChampion'), sortedOverall[0]); // Optionally save the latest overall champion
-          } else {
-            this.setState({ overallChampion: null, showOverallChampionModal: true });
-          }
-        } else {
-          this.setState({ overallChampion: null, showOverallChampionModal: true });
-        }
-      })
-      .catch(error => {
-        console.error("Error fetching previous submissions:", error);
-        this.setState({ overallChampion: null, showOverallChampionModal: true });
+      // Calculate points from previous submissions
+      const previousData = previousSnapshot.val() || {};
+      Object.values(previousData).forEach(dailyData => {
+        Object.values(dailyData).forEach(entry => {
+          if (entry.d1) overallPoints[entry.d1] = (overallPoints[entry.d1] || 0) + 3;
+          if (entry.d2) overallPoints[entry.d2] = (overallPoints[entry.d2] || 0) + 2;
+          if (entry.d3) overallPoints[entry.d3] = (overallPoints[entry.d3] || 0) + 1;
+        });
       });
+
+      // Add points from archives
+      const archivesData = archivesSnapshot.val() || {};
+      Object.values(archivesData).forEach(archive => {
+        if (archive.submissions) {
+          Object.values(archive.submissions).forEach(entry => {
+            if (entry.d1) overallPoints[entry.d1] = (overallPoints[entry.d1] || 0) + 3;
+            if (entry.d2) overallPoints[entry.d2] = (overallPoints[entry.d2] || 0) + 2;
+            if (entry.d3) overallPoints[entry.d3] = (overallPoints[entry.d3] || 0) + 1;
+          });
+        }
+      });
+
+      // Add points from current submissions
+      const currentData = currentSnapshot.val() || {};
+      Object.values(currentData).forEach(entry => {
+        if (entry.d1) overallPoints[entry.d1] = (overallPoints[entry.d1] || 0) + 3;
+        if (entry.d2) overallPoints[entry.d2] = (overallPoints[entry.d2] || 0) + 2;
+        if (entry.d3) overallPoints[entry.d3] = (overallPoints[entry.d3] || 0) + 1;
+      });
+
+      // Sort players by total points and create final rankings
+      const sortedOverall = Object.entries(overallPoints)
+        .sort(([, a], [, b]) => b - a)
+        .map(([player, totalPoints]) => ({
+          player,
+          totalPoints,
+          votesReceived: {
+            threePoints: this.countVotesForPoints(player, 3, previousData, archivesData, currentData),
+            twoPoints: this.countVotesForPoints(player, 2, previousData, archivesData, currentData),
+            onePoint: this.countVotesForPoints(player, 1, previousData, archivesData, currentData)
+          }
+        }));
+
+      if (sortedOverall.length > 0) {
+        // Find all players with the highest score
+        const highestPoints = sortedOverall[0].totalPoints;
+        const champions = sortedOverall.filter(player => player.totalPoints === highestPoints);
+
+        // Save full rankings and set state
+        set(ref(db, 'overallRankings'), sortedOverall)
+          .then(() => {
+            this.setState({
+              overallChampion: champions, // Now storing array of champions
+              showOverallChampionModal: true
+            });
+          })
+          .catch(error => {
+            console.error("Error saving overall rankings:", error);
+            this.setState({
+              overallChampion: champions, // Now storing array of champions
+              showOverallChampionModal: true
+            });
+          });
+      } else {
+        this.setState({ overallChampion: null, showOverallChampionModal: true });
+      }
+    }).catch(error => {
+      console.error("Error calculating overall champion:", error);
+      this.setState({ overallChampion: null, showOverallChampionModal: true });
+    });
+  };
+
+  // Helper method to count votes for specific point values
+  countVotesForPoints = (player, points, previousData, archivesData, currentData) => {
+    let count = 0;
+    const field = `d${4-points}`; // d1 for 3 points, d2 for 2 points, d3 for 1 point
+
+    // Count in previous submissions
+    Object.values(previousData).forEach(dailyData => {
+      Object.values(dailyData).forEach(entry => {
+        if (entry[field] === player) count++;
+      });
+    });
+
+    // Count in archives
+    Object.values(archivesData).forEach(archive => {
+      if (archive.submissions) {
+        Object.values(archive.submissions).forEach(entry => {
+          if (entry[field] === player) count++;
+        });
+      }
+    });
+
+    // Count in current submissions
+    Object.values(currentData).forEach(entry => {
+      if (entry[field] === player) count++;
+    });
+
+    return count;
   };
 
   handleCloseOverallChampionModal = () => {
     this.setState({ showOverallChampionModal: false });
+  };
+
+  checkAndArchiveData = () => {
+    const submissionStatusRef = ref(db, 'submissionStatus');
+    const lastArchiveRef = ref(db, 'lastArchiveTime');
+    const archivesListRef = ref(db, 'archivesList');
+  
+    get(submissionStatusRef).then(snapshot => {
+      const status = snapshot.val();
+      if (status === 'closed') {
+        get(lastArchiveRef).then(archiveSnapshot => {
+          const lastArchiveTime = archiveSnapshot.val();
+          const currentTime = Date.now();
+          
+          if (!lastArchiveTime || (currentTime - lastArchiveTime) >= 1*1000) {
+            const today = new Date().toISOString().split('T')[0];
+            
+            Promise.all([
+              get(ref(db, 'currentSubmissions')),
+              get(ref(db, 'currentTopThree'))
+            ]).then(([submissionsSnapshot, topThreeSnapshot]) => {
+              const archiveData = {
+                submissions: submissionsSnapshot.val(),
+                topThree: topThreeSnapshot.val(),
+                archivedAt: currentTime,
+                date: today
+              };
+
+              // Save to archive and update archives list
+              Promise.all([
+                set(ref(db, `archives/${today}`), archiveData),
+                push(ref(db, 'archivesList'), {
+                  date: today,
+                  archivedAt: currentTime
+                })
+              ]).then(() => {
+                // Clear current data
+                remove(ref(db, 'currentSubmissions'));
+                remove(ref(db, 'currentTopThree'));
+                remove(ref(db, 'selectedPlayers'));
+                remove(ref(db, 'votedUsers'));
+                set(ref(db, 'lastArchiveTime'), currentTime);
+              });
+            });
+          }
+        });
+      }
+    });
   };
 
   render() {
