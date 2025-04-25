@@ -35,7 +35,7 @@ function Login({ onLogin }) {
     setError('');
 
     try {
-      if (email === '123@123.com' && password === '123') {
+      if (email === '3-2-1@nuvu.com' && password === '!#Admin#!') {
         onLogin();
       } else {
         await signInWithEmailAndPassword(auth, email, password);
