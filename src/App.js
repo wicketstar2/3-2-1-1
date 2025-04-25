@@ -35,7 +35,7 @@ function Login({ onLogin }) {
     setError('');
 
     try {
-      if (email === '3-2-1@nuvu.com' && password === '!#Admin#!') {
+      if (email === '3-2-1@nuvu.au' && password === '!#Admin#!') {
         onLogin();
       } else {
         await signInWithEmailAndPassword(auth, email, password);
