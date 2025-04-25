@@ -1154,3 +1154,13 @@ body {
   justify-content: center;
   gap: 5px;
 }
+
+
+.action-button-back-button{
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+}

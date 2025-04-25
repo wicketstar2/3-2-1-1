@@ -23,7 +23,7 @@ const db = getDatabase(app);
 const auth = getAuth(app);
 
 // Modern Login Component
-function Login({ onLogin }) {
+function Login({ onLogin, onClose }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -84,6 +84,9 @@ function Login({ onLogin }) {
             {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
+        <button type="button" className="close-button" onClick={onClose}>
+          Close
+        </button>
       </div>
     </div>
   );
@@ -479,7 +482,7 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
     </div>
   );
 }
-
+<button></button>
 // Overall Champion Display Component
 function OverallChampion({ overallChampion, onClose }) {
   return (
@@ -491,7 +494,7 @@ function OverallChampion({ overallChampion, onClose }) {
         ) : (
           <p>No overall champion data available yet.</p>
         )}
-        <button className="action-button back-button" onClick={onClose}>Close</button>
+        <button  className="action-button back-button" onClick={onClose}>Close</button>
       </div>
     </div>
   );
@@ -1299,7 +1302,7 @@ class App extends Component {
         </header>
 
         {showLogin && (
-          <Login onLogin={this.handleAdminLogin} />
+          <Login onLogin={this.handleAdminLogin} onClose={this.handleAdminToggle} />
         )}
 
         <main className="app-content">
