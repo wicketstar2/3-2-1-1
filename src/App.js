@@ -490,12 +490,18 @@ function OverallChampion({ overallChampion, onClose }) {
     <div className="overall-champion-modal">
       <div className="champion-card">
         <h2>🏆 Overall Champion 🏆</h2>
-        {overallChampion ? (
-          <p className="champion-name">{overallChampion.player} with {overallChampion.totalPoints} total points!</p>
+        {overallChampion && overallChampion.length > 0 ? (
+          <div>
+            {overallChampion.map((champion, index) => (
+              <p key={index} className="champion-name">
+                {champion.player} with {champion.totalPoints} total points!
+              </p>
+            ))}
+          </div>
         ) : (
           <p>No overall champion data available yet.</p>
         )}
-        <button  className="action-button back-button" onClick={onClose}>Close</button>
+        <button className="action-button back-button" onClick={onClose}>Close</button>
       </div>
     </div>
   );
