@@ -1156,7 +1156,7 @@ body {
 }
 
 
-.action-button-back-button{
+.close{
   background-color: var(--danger-color);
   color: white;
   border: none;
