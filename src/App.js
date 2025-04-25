@@ -288,6 +288,33 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
             ))}
         </select>
 
+        <button
+          className="action-button danger-button"
+          onClick={() => {
+            if (window.confirm('⚠️ WARNING: This will permanently delete ALL data including current votes, archives, and rankings. This action cannot be undone.')) {
+              if (window.prompt('Type "DELETE " to confirm:') === 'DELETE') {
+                Promise.all([
+                  remove(ref(db, 'currentSubmissions')),
+                  remove(ref(db, 'currentTopThree')),
+                  remove(ref(db, 'previousSubmissions')),
+                  remove(ref(db, 'previousTopThree')),
+                  remove(ref(db, 'archives')),
+                  remove(ref(db, 'archivesList')),
+                  remove(ref(db, 'selectedPlayers')),
+                  remove(ref(db, 'votedUsers')),
+                  remove(ref(db, 'overallRankings')),
+                ]).then(() => {
+                  alert('✅ All data has been successfully cleared.');
+                }).catch(error => {
+                  console.error('Error clearing data:', error);
+                  alert('❌ Error clearing data. Please try again.');
+                });
+              }
+            }
+          }}
+        >
+          Clear All Data
+        </button>
        
       </div>
 
