@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, push, onValue, remove, set, get } from 'firebase/database';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import './App.css';
-import monstersData from './Book1.json';
+import monstersData from './G18-20 Diamond LeagueTeamContactList_20250426024937.json';
 import { ReactComponent as Loading } from './Gear@1x-0.1s-200px-200px.svg';
 import Loader from './Loader'; // Import the new Loader component
 
