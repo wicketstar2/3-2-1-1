@@ -94,12 +94,12 @@ function Login({ onLogin, onClose }) {
 }
 
 // Redesigned Admin Panel
-function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, onEditPlayers }) {
+function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, onEditPlayers, managerMode, toggleManagerMode }) {
   const [currentEntries, setCurrentEntries] = useState([]);
   const [previousEntries, setPreviousEntries] = useState({});
   const [submissionStatus, setSubmissionStatus] = useState('closed');
   const [currentTopThree, setCurrentTopThree] = useState([]);
-  const [previousTopThree, setPreviousTopThree] = useState({});
+  const [previousTopThree, setPreviousTopThree] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPreviousData, setShowPreviousData] = useState(null); // null = none, date string = show that date
   const [archives, setArchives] = useState({});
@@ -319,7 +319,12 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
         >
           Clear All Data
         </button>
-       
+        <button
+          className={`action-button ${managerMode ? 'manager-mode-active' : ''}`}
+          onClick={toggleManagerMode}
+        >
+          {managerMode ? 'Disable Manager Mode' : 'Enable Manager Mode'}
+        </button>
       </div>
 
       {loading ? (
@@ -601,6 +606,8 @@ class App extends Component {
       overallChampion: null,
       showOverallChampionModal: false,
       isEditingPlayers: false,
+      maneger:false,
+      managerMode: false, // Add managerMode state
     };
   }
 
@@ -855,7 +862,7 @@ class App extends Component {
   };
 
   handleVoteSubmit = () => {
-    const { selected, userId, selectedPlayers, lastClickedPlayer } = this.state;
+    const { selected, userId, selectedPlayers, lastClickedPlayer, managerMode } = this.state;
 
     // Validate all selections are made
     if (!selected.d1 || !selected.d2 || !selected.d3) {
@@ -863,8 +870,8 @@ class App extends Component {
       return;
     }
 
-    // Check if user has already voted
-    if (this.state.votedUsers.includes(userId)) {
+    // Check if user has already voted (unless in manager mode)
+    if (!managerMode && this.state.votedUsers.includes(userId)) {
       this.setState({
         userMessage: 'You have already submitted your vote this week.',
         currentStep: 'playerList'
@@ -882,8 +889,10 @@ class App extends Component {
     // Submit vote, record user as having voted, and add players to selectedPlayers
     push(ref(db, 'currentSubmissions'), submission)
       .then(() => {
-        // Add user to the votedUsers list in database
-        push(ref(db, 'votedUsers'), userId);
+        // Add user to the votedUsers list in database (unless in manager mode)
+        if (!managerMode) {
+          push(ref(db, 'votedUsers'), userId);
+        }
 
         // Add each player to the selectedPlayers list in database
         const playersToAdd = [selected.d1, selected.d2, selected.d3];
@@ -894,15 +903,15 @@ class App extends Component {
         });
 
         // Update local state
-        this.setState({
+        this.setState(prevState => ({
           currentStep: 'submitted',
           selected: { d1: '', d2: '', d3: '' },
-          votedUsers: [...this.state.votedUsers, userId],
-          selectedPlayers: [...this.state.selectedPlayers, ...playersToAdd.filter(p => !selectedPlayers.includes(p))],
+          votedUsers: managerMode ? prevState.votedUsers : [...prevState.votedUsers, userId],
+          selectedPlayers: [...prevState.selectedPlayers, ...playersToAdd.filter(p => !selectedPlayers.includes(p))],
           userMessage: '',
-          hiddenPlayers: lastClickedPlayer ? [...this.state.hiddenPlayers, lastClickedPlayer] : this.state.hiddenPlayers, // Hide only the clicked player
+          hiddenPlayers: managerMode ? prevState.hiddenPlayers : (lastClickedPlayer ? [...prevState.hiddenPlayers, lastClickedPlayer] : prevState.hiddenPlayers), // Hide only the clicked player (unless in manager mode)
           lastClickedPlayer: null // Reset last clicked player
-        });
+        }));
 
         // Calculate and update top three
         this.updateTopThree();
@@ -1249,8 +1258,14 @@ class App extends Component {
     });
   };
 
+  toggleManagerMode = () => {
+    this.setState(prevState => ({
+      managerMode: !prevState.managerMode
+    }));
+  };
+
   render() {
-    const { currentStep, isAdmin, showLogin, userMessage, loading, isAddingPlayer, submissionStatus, showOverallChampionModal, overallChampion, isEditingPlayers, players } = this.state
+    const { currentStep, isAdmin, showLogin, userMessage, loading, isAddingPlayer, submissionStatus, showOverallChampionModal, overallChampion, isEditingPlayers, players, managerMode } = this.state
     if (loading) {
       return (
         <div className="app-container">
@@ -1282,6 +1297,8 @@ class App extends Component {
               onToggleSubmission={this.handleToggleSubmission}
               onShowOverallChampion={this.handleShowOverallChampion}
               onEditPlayers={this.handleEditPlayersClick}
+              managerMode={managerMode} // Pass managerMode to AdminPanel
+              toggleManagerMode={this.toggleManagerMode} // Pass toggle function
             />
           )}
           <button
@@ -1362,9 +1379,9 @@ class App extends Component {
             </div>
           )}
         </main>
-
-          <button>Manger Mode</button>
-
+        {this.state.maneger && 
+          <button className='man'>Manger Mode</button>
+}
         <footer className="app-footer">
           <p>© 2025 Player Voting System NUVU</p>
         </footer>

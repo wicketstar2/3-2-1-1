@@ -1164,3 +1164,14 @@ body {
   border-radius: var(--border-radius);
   cursor: pointer;
 }
+
+.man{
+  width: 70px;
+  margin-top: 5px;
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+}
