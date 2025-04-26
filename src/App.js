@@ -1363,8 +1363,10 @@ class App extends Component {
           )}
         </main>
 
+          <button>Manger Mode</button>
+
         <footer className="app-footer">
-          <p>© 2025 Player Voting System</p>
+          <p>© 2025 Player Voting System NUVU</p>
         </footer>
       </div>
     );
