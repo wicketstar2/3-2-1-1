@@ -878,7 +878,7 @@ class App extends Component {
       });
       return;
     }
-
+// 1000
     // Create submission
     const submission = {
       ...selected,
@@ -1057,43 +1057,47 @@ class App extends Component {
 
   toggleSubmissionInDatabase = (status) => {
     if (status === 'closed') {
-      // Archive current data before closing
-      Promise.all([
-        get(ref(db, 'currentSubmissions')),
-        get(ref(db, 'currentTopThree'))
-      ]).then(([submissionsSnapshot, topThreeSnapshot]) => {
-        const currentTime = new Date();
-        const archiveId = `${currentTime.toISOString().split('.')[0]}`;
-        const archiveData = {
-          submissions: submissionsSnapshot.val(),
-          topThree: topThreeSnapshot.val(),
-          archivedAt: currentTime.toISOString(),
-          closedAt: currentTime.toISOString(),
-          date: currentTime.toLocaleDateString(),
-          displayName: `Voting closed on ${currentTime.toLocaleDateString()} at ${currentTime.toLocaleTimeString()}`
-        };
-
-        // Save to archives
+      if (window.confirm('⚠️ WARNING: Closing submissions will archive the current data. Once archived, the data can only be removed by clearing ALL data.')) {
+        // Archive current data before closing
         Promise.all([
-          set(ref(db, `archives/${archiveId}`), archiveData),
-          set(ref(db, 'submissionStatus'), status),
-          remove(ref(db, 'currentSubmissions')),
-          remove(ref(db, 'currentTopThree')),
-          remove(ref(db, 'selectedPlayers')),
-          remove(ref(db, 'votedUsers'))
-        ]).then(() => {
-          alert('Submissions closed and archived successfully.');
-        }).catch(err => alert('Error closing submissions: ' + err.message));
-      });
+          get(ref(db, 'currentSubmissions')),
+          get(ref(db, 'currentTopThree'))
+        ]).then(([submissionsSnapshot, topThreeSnapshot]) => {
+          const currentTime = new Date();
+          const archiveId = `${currentTime.toISOString().split('.')[0]}`;
+          const archiveData = {
+            submissions: submissionsSnapshot.val(),
+            topThree: topThreeSnapshot.val(),
+            archivedAt: currentTime.toISOString(),
+            closedAt: currentTime.toISOString(),
+            date: currentTime.toLocaleDateString(),
+            displayName: `Voting closed on ${currentTime.toLocaleDateString()} at ${currentTime.toLocaleTimeString()}`
+          };
+
+          // Save to archives
+          Promise.all([
+            set(ref(db, `archives/${archiveId}`), archiveData),
+            set(ref(db, 'submissionStatus'), status),
+            remove(ref(db, 'currentSubmissions')),
+            remove(ref(db, 'currentTopThree')),
+            remove(ref(db, 'selectedPlayers')),
+            remove(ref(db, 'votedUsers'))
+          ]).then(() => {
+            alert('Submissions closed and archived successfully.');
+          }).catch(err => alert('Error closing submissions: ' + err.message));
+        });
+      }
     } else {
-      // Opening voting
-      Promise.all([
-        remove(ref(db, 'selectedPlayers')),
-        remove(ref(db, 'votedUsers')),
-        set(ref(db, 'submissionStatus'), status)
-      ]).then(() => {
-        alert('Submissions opened successfully. All players are now available.');
-      }).catch(err => alert('Error updating submission status: ' + err.message));
+      if (window.confirm('⚠️ WARNING: Opening submissions will automatically close voting after 30 minutes.')) {
+        // Opening voting
+        Promise.all([
+          remove(ref(db, 'selectedPlayers')),
+          remove(ref(db, 'votedUsers')),
+          set(ref(db, 'submissionStatus'), status)
+        ]).then(() => {
+          alert('Submissions opened successfully. All players are now available.');
+        }).catch(err => alert('Error updating submission status: ' + err.message));
+      }
     }
   };
 
@@ -1379,9 +1383,7 @@ class App extends Component {
             </div>
           )}
         </main>
-        {this.state.maneger && 
-          <button className='man'>Manger Mode</button>
-}
+        
         <footer className="app-footer">
           <p>© 2025 Player Voting System NUVU</p>
         </footer>
