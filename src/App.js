@@ -94,6 +94,8 @@ function Login({ onLogin, onClose }) {
 }
 
 // Redesigned Admin Panel
+// Redesigned Admin Panel
+// Redesigned Admin Panel
 function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, onEditPlayers, managerMode, toggleManagerMode }) {
   const [currentEntries, setCurrentEntries] = useState([]);
   const [previousEntries, setPreviousEntries] = useState({});
@@ -105,6 +107,74 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
   const [archives, setArchives] = useState({});
   const [selectedArchive, setSelectedArchive] = useState(null);
   const [archivesList, setArchivesList] = useState([]);
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [showClearOptions, setShowClearOptions] = useState(false);
+  const [showPlayerOptions, setShowPlayerOptions] = useState(false); // New state for player options dropdown
+
+  const handleShowQrCode = () => {
+    setShowQrCode(!showQrCode);
+  };
+
+  const handleClearCurrentData = () => {
+    if (window.confirm('Are you sure you want to clear all current voting data? This action cannot be undone.')) {
+      remove(ref(db, 'currentSubmissions'))
+        .then(() => {
+          remove(ref(db, 'currentTopThree'))
+            .then(() => {
+              remove(ref(db, 'selectedPlayers'))
+                .then(() => {
+                  remove(ref(db, 'votedUsers'))
+                    .then(() => {
+                      setCurrentEntries([]);
+                      setCurrentTopThree([]);
+                      alert('Current voting data cleared successfully!');
+                      setShowClearOptions(false);
+                    })
+                    .catch((error) => {
+                      console.error('Error clearing voted users data: ', error);
+                      alert('Error clearing voted users data');
+                    });
+                })
+                .catch((error) => {
+                  console.error('Error clearing selected players data: ', error);
+                  alert('Error clearing selected players data');
+                });
+            })
+            .catch((error) => {
+              console.error('Error clearing current top three data: ', error);
+              alert('Error clearing current top three data');
+            });
+        })
+        .catch((error) => {
+          console.error('Error clearing current data: ', error);
+          alert('Error clearing current data');
+        });
+    }
+  };
+
+  const handleClearAllData = () => {
+    if (window.confirm('⚠️ WARNING: This will permanently delete ALL data including current votes, archives, and rankings. This action cannot be undone.')) {
+      if (window.prompt('Type "DELETE " to confirm:') === 'DELETE') {
+        Promise.all([
+          remove(ref(db, 'currentSubmissions')),
+          remove(ref(db, 'currentTopThree')),
+          remove(ref(db, 'previousSubmissions')),
+          remove(ref(db, 'previousTopThree')),
+          remove(ref(db, 'archives')),
+          remove(ref(db, 'archivesList')),
+          remove(ref(db, 'selectedPlayers')),
+          remove(ref(db, 'votedUsers')),
+          remove(ref(db, 'overallRankings')),
+        ]).then(() => {
+          alert('✅ All data has been successfully cleared.');
+          setShowClearOptions(false);
+        }).catch(error => {
+          console.error('Error clearing data:', error);
+          alert('❌ Error clearing data. Please try again.');
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     const currentSubmissionsRef = ref(db, 'currentSubmissions');
@@ -133,7 +203,7 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
         setLoading(false);
       });
     };
-// Check 
+
     const fetchPreviousData = () => {
       onValue(previousSubmissionsRef, (snapshot) => {
         setPreviousEntries(snapshot.val() || {});
@@ -189,42 +259,6 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
     }
   }, [previousEntries, showPreviousData]);
 
-  const handleClearCurrentData = () => {
-    if (window.confirm('Are you sure you want to clear all current voting data? This action cannot be undone.')) {
-      remove(ref(db, 'currentSubmissions'))
-        .then(() => {
-          remove(ref(db, 'currentTopThree'))
-            .then(() => {
-              remove(ref(db, 'selectedPlayers'))
-                .then(() => {
-                  remove(ref(db, 'votedUsers'))
-                    .then(() => {
-                      setCurrentEntries([]);
-                      setCurrentTopThree([]);
-                      alert('Current voting data cleared successfully!');
-                    })
-                    .catch((error) => {
-                      console.error('Error clearing voted users data: ', error);
-                      alert('Error clearing voted users data');
-                    });
-                })
-                .catch((error) => {
-                  console.error('Error clearing selected players data: ', error);
-                  alert('Error clearing selected players data');
-                });
-            })
-            .catch((error) => {
-              console.error('Error clearing current top three data: ', error);
-              alert('Error clearing current top three data');
-            });
-        })
-        .catch((error) => {
-          console.error('Error clearing current data: ', error);
-          alert('Error clearing current data');
-        });
-    }
-  };
-
   return (
     <div className="admin-panel">
       <div className="admin-header">
@@ -236,47 +270,71 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
           </span>
         </p>
       </div>
-{/* Show Current data */}
+
       <div className="action-buttons">
+        {/* Toggle button for Open/Close voting */}
         <button
-          className="action-button open-button"
-          onClick={() => onToggleSubmission('open')}
-          disabled={submissionStatus === 'open'}
+          className={`action-button ${submissionStatus === 'open' ? 'close-button' : 'open-button'}`}
+          onClick={() => onToggleSubmission(submissionStatus === 'open' ? 'closed' : 'open')}
         >
-          Open Voting
+          {submissionStatus === 'open' ? 'Close Voting' : 'Open Voting'}
         </button>
-        <button
-          className="action-button close-button"
-          onClick={() => onToggleSubmission('closed')}
-          disabled={submissionStatus === 'closed'}
-        >
-          Close Voting
-        </button>
-        <button
-          className="action-button clear-button"
-          onClick={handleClearCurrentData}
-        >
-          Clear Current Data
-        </button>
-        <button
-          className="action-button add-player-button"
-          onClick={onAddPlayer}
-        >
-          Add Player
-        </button>
+
+        {/* Toggle button for Player Options with dropdown - REMOVED THE DISABLED CONDITION */}
+        <div className="dropdown-container">
+          <button
+            className="action-button add-player-button"
+            onClick={() => setShowPlayerOptions(!showPlayerOptions)}
+            disabled={!!selectedArchive}
+          >
+            Player Options ▼
+          </button>
+          {showPlayerOptions && (
+            <div className="dropdown-menu">
+              {/* Removed the submissionStatus === 'open' condition to allow adding players anytime */}
+              <button onClick={() => {
+                onAddPlayer();
+                setShowPlayerOptions(false);
+              }} className="dropdown-item">
+                Add Player
+              </button>
+              <button onClick={() => {
+                onEditPlayers();
+                setShowPlayerOptions(false);
+              }} className="dropdown-item">
+                Edit Players
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Clear data dropdown */}
+        <div className="dropdown-container">
+          <button
+            className="action-button clear-button"
+            onClick={() => setShowClearOptions(!showClearOptions)}
+          >
+            Clear Data Options ▼
+          </button>
+          {showClearOptions && (
+            <div className="dropdown-menu">
+              <button onClick={handleClearCurrentData} className="dropdown-item">
+                Clear Current Data
+              </button>
+              <button onClick={handleClearAllData} className="dropdown-item danger-item">
+                Clear ALL Data
+              </button>
+            </div>
+          )}
+        </div>
+
         <button
           className="action-button champion-button"
           onClick={onShowOverallChampion}
         >
           Show Overall Champion
         </button>
-        <button
-          className="action-button edit-players-button"
-          onClick={onEditPlayers}
-        >
-          Edit Players
-        </button>
-        
+
         <select
           className="action-button select-previous-data"
           value={selectedArchive || ''}
@@ -293,39 +351,25 @@ function AdminPanel({ onAddPlayer, onToggleSubmission, onShowOverallChampion, on
         </select>
 
         <button
-          className="action-button danger-button"
-          onClick={() => {
-            if (window.confirm('⚠️ WARNING: This will permanently delete ALL data including current votes, archives, and rankings. This action cannot be undone.')) {
-              if (window.prompt('Type "DELETE " to confirm:') === 'DELETE') {
-                Promise.all([
-                  remove(ref(db, 'currentSubmissions')),
-                  remove(ref(db, 'currentTopThree')),
-                  remove(ref(db, 'previousSubmissions')),
-                  remove(ref(db, 'previousTopThree')),
-                  remove(ref(db, 'archives')),
-                  remove(ref(db, 'archivesList')),
-                  remove(ref(db, 'selectedPlayers')),
-                  remove(ref(db, 'votedUsers')),
-                  remove(ref(db, 'overallRankings')),
-                ]).then(() => {
-                  alert('✅ All data has been successfully cleared.');
-                }).catch(error => {
-                  console.error('Error clearing data:', error);
-                  alert('❌ Error clearing data. Please try again.');
-                });
-              }
-            }
-          }}
-        >
-          Clear All Data
-        </button>
-        <button
           className={`action-button ${managerMode ? 'manager-mode-active' : ''}`}
           onClick={toggleManagerMode}
         >
           {managerMode ? 'Disable Manager Mode' : 'Enable Manager Mode'}
         </button>
+        
+        <button
+          className="action-button qr-code-button"
+          onClick={handleShowQrCode}
+        >
+          {showQrCode ? 'Hide QR Code' : 'Show QR Code to Website'}
+        </button>
       </div>
+
+      {showQrCode && (
+        <div className="qr-code-container">
+          <img src="qrcode_3-2-1.nuvu.au.png" alt="QR Code" className="qr-code-image" />
+        </div>
+      )}
 
       {loading ? (
         <div className="loading-indicator">Loading data...</div>

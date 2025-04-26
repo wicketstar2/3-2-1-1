@@ -1175,3 +1175,98 @@ body {
   border-radius: var(--border-radius);
   cursor: pointer;
 }
+
+.qr-code-button {
+  background-color: #27ae60; /* Green */
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.qr-code-button:hover {
+  background-color: #219653;
+}
+
+.qr-code-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.qr-code-image {
+  max-width: 200px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+
+.edit{
+  border: 0px;
+  border-radius: 5px;
+}
+
+/* Dropdown container styles */
+.dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+/* Dropdown menu styles */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  min-width: 180px;
+  padding: 8px 0;
+  margin: 4px 0 0;
+  background-color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.175);
+}
+
+/* Dropdown item styles */
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  clear: both;
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+  background-color: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f1f5f9;
+  text-decoration: none;
+}
+
+/* Danger item style (for Clear ALL Data) */
+.danger-item {
+  color: #dc2626;
+}
+.danger-item:hover {
+  background-color: #fee2e2;
+}
+
+/* Active dropdown button style */
+.action-button.active {
+  background-color: #2c3e50;
+}
+
+/* Make dropdown menus close when clicking outside */
+@media (max-width: 768px) {
+  .dropdown-menu {
+    position: static;
+    width: 100%;
+    margin-top: 8px;
+  }
+}
